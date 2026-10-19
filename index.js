@@ -1,4 +1,19 @@
 ﻿require('dotenv').config();
+const express = require('express');
+const app = express();
+
+// Renderが割り当てるポート（またはデフォルトで10000など）を使用する
+const port = process.env.PORT || 10000;
+
+// 根っこ（/）にアクセスされたら生存を返す（GASの定期アクセス用）
+app.get('/', (req, res) => {
+    res.send('Bot is running and alive!');
+});
+
+// サーバーを起動してポートをバインドする
+app.listen(port, '0.0.0.0', () => {
+    console.log(`Server is listening on port ${port}`);
+});
 
 const {
     Client,
