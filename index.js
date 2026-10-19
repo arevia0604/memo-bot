@@ -1,18 +1,58 @@
-﻿require('dotenv').config();
-const express = require('express');
+﻿import 'dotenv/config';
+import express from 'express';
+import {
+    Client,
+    GatewayIntentBits,
+    SlashCommandBuilder,
+    REST,
+    Routes,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    ChannelType,
+} from 'discord.js';
+
+// ==========================================
+// 1. Webサーバーの設定（RenderのPing受け取り用）
+// ==========================================
 const app = express();
+const PORT = process.env.PORT || 10000;
 
-// Renderが割り当てるポート（またはデフォルトで10000など）を使用する
-const port = process.env.PORT || 10000;
-
-// 根っこ（/）にアクセスされたら生存を返す（GASの定期アクセス用）
+// GASやUptimeRobotなどの外部からアクセスが来たときの処理
 app.get('/', (req, res) => {
-    res.send('Bot is running and alive!');
+    console.log('🏓 Pingを受信しました！サーバーは稼働中です。');
+    res.status(200).send('I am alive!');
 });
 
-// サーバーを起動してポートをバインドする
-app.listen(port, '0.0.0.0', () => {
-    console.log(`Server is listening on port ${port}`);
+// ポートを開いてサーバーを起動
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Web server is running on port ${PORT}`);
+});
+
+// ==========================================
+// 2. TOKENのデバッグ・環境変数確認
+// ==========================================
+console.log("=== TOKEN デバッグ開始 ===");
+console.log("型:", typeof process.env.TOKEN);
+console.log("中身が存在するか:", process.env.TOKEN ? "存在する（長さ: " + process.env.TOKEN.length + "文字）" : "❌ 存在しない（undefined または 空）");
+console.log("=== TOKEN デバッグ終了 ===");
+
+const TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
+
+// ==========================================
+// 3. Discord Botの初期化
+// ==========================================
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
+    ]
 });
 
 const {
