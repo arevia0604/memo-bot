@@ -46,6 +46,14 @@ const CLIENT_ID = process.env.CLIENT_ID;
 // ==========================================
 // 3. Discord Botの初期化
 // ==========================================
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildVoiceStates,
+    ]
+});
 
 const userNotes = {};
 const userDashboards = {};
