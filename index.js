@@ -36,7 +36,13 @@ if (!TOKEN) {
 }
 
 // ==========================================
-// 3. Discord Botの初期化とコマンド登録
+// 3. メモデータ保存用ストレージ（メモリ上）
+// ==========================================
+// 構造: { [userId]: { [title]: content } }
+const userMemos = {};
+
+// ==========================================
+// 4. Discord Botの初期化とコマンド登録
 // ==========================================
 const client = new Client({
     intents: [
@@ -46,16 +52,70 @@ const client = new Client({
     ]
 });
 
-// 登録するスラッシュコマンド
+// すべてのスラッシュコマンド定義
 const commands = [
     new SlashCommandBuilder()
         .setName('memo')
-        .setDescription('メモを保存・確認します')
-        .addStringOption(option =>
-            option.setName('content')
-                .setDescription('保存するメモの内容')
-                .setRequired(false)
+        .setDescription('メモを管理します')
+        // /memo add <title> <content>
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('add')
+                .setDescription('新しいメモを作成します')
+                .addStringOption(option =>
+                    option.setName('title').setDescription('メモのタイトル').setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('content').setDescription('メモの本文').setRequired(true)
+                )
+        )
+        // /memo list (タイトル一覧)
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('list')
+                .setDescription('保存されているメモのタイトル一覧を表示します')
+        )
+        // /memo all (すべてのメモをまとめて表示)
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('all')
+                .setDescription('保存されているすべてのメモの内容をまとめて表示します')
+        )
+        // /memo view <title> (特定のメモを読む)
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('view')
+                .setDescription('指定したタイトルのメモを表示します')
+                .addStringOption(option =>
+                    option.setName('title').setDescription('確認したいメモのタイトル').setRequired(true)
+                )
+        )
+        // /memo edit <title> <new_content> (編集)
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('edit')
+                .setDescription('既存のメモの内容を書き換えます')
+                .addStringOption(option =>
+                    option.setName('title').setDescription('編集するメモのタイトル').setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('new_content').setDescription('新しい本文').setRequired(true)
+                )
+        )
+        // /memo delete <title> (削除)
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('delete')
+                .setDescription('指定したメモを削除します')
+                .addStringOption(option =>
+                    option.setName('title').setDescription('削除するメモのタイトル').setRequired(true)
+                )
         ),
+
+    // /help
+    new SlashCommandBuilder()
+        .setName('help')
+        .setDescription('メモ帳Botの使い方を表示します'),
 ];
 
 async function registerCommands() {
@@ -80,30 +140,173 @@ client.once('clientReady', async (c) => {
 });
 
 // ==========================================
-// 4. コマンドの処理
+// 5. 使い方（ヘルプ）を表示する関数
+// ==========================================
+function getHelpContent() {
+    return `📖 **メモ帳Botの使い方ガイド** 📖
+
+• **\`/memo add [タイトル] [本文]\`**：新しいメモを作成します。
+• **\`/memo list\`**：保存されているメモの「タイトル一覧」を表示します。
+• **\`/memo all\`**：保存されている**すべてのメモ（タイトルと本文）をまとめて表示**します。
+• **\`/memo view [タイトル]\`**：指定したメモの本文を個別に表示します。
+• **\`/memo edit [タイトル] [新しい本文]\`**：メモの内容を書き換えます。
+• **\`/memo delete [タイトル]\`**：メモを削除します。
+• **\`/help\`**：この使い方ガイドを表示します。`;
+}
+
+// ==========================================
+// 6. インタラクションの処理
 // ==========================================
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.commandName === 'memo') {
-        const content = interaction.options.getString('content');
+    const userId = interaction.user.id;
+    if (!userMemos[userId]) userMemos[userId] = {};
 
-        if (!content) {
+    const { commandName } = interaction;
+
+    if (commandName === 'help') {
+        await interaction.reply({
+            content: getHelpContent(),
+            ephemeral: true,
+        });
+        return;
+    }
+
+    if (commandName === 'memo') {
+        const subcommand = interaction.options.getSubcommand();
+
+        // 1. 追加 (add)
+        if (subcommand === 'add') {
+            const title = interaction.options.getString('title');
+            const content = interaction.options.getString('content');
+
+            userMemos[userId][title] = content;
+
             await interaction.reply({
-                content: '📝 現在保存されているメモはありません。（機能拡張用）',
+                content: `✅ メモ「**${title}**」を新しく保存しました！`,
                 ephemeral: true,
             });
             return;
         }
 
-        await interaction.reply({
-            content: `💾 メモを保存しました: 「${content}」`,
-            ephemeral: true,
-        });
+        // 2. タイトル一覧 (list)
+        if (subcommand === 'list') {
+            const titles = Object.keys(userMemos[userId]);
+
+            if (titles.length === 0) {
+                await interaction.reply({
+                    content: '📭 保存されているメモはまだありません。`/memo add` で追加してください。',
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            const listText = titles.map((t, index) => `${index + 1}. **${t}**`).join('\n');
+            await interaction.reply({
+                content: `📋 **あなたの保存済みメモ一覧（タイトル）**\n${listText}`,
+                ephemeral: true,
+            });
+            return;
+        }
+
+        // 3. すべてまとめて表示 (all) ★新機能
+        if (subcommand === 'all') {
+            const memos = userMemos[userId];
+            const titles = Object.keys(memos);
+
+            if (titles.length === 0) {
+                await interaction.reply({
+                    content: '📭 保存されているメモはまだありません。`/memo add` で追加してください。',
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            // すべてのメモのタイトルと本文を連結してテキストを作成
+            let allText = `📚 **あなたのすべてのメモ一覧**\n\n`;
+            for (const title of titles) {
+                allText += `🔹 **【 ${title} 】**\n\`\`\`text\n${memos[title]}\n\`\`\`\n`;
+            }
+
+            // 文字数がDiscordの制限（2000文字）を超えないように簡易チェック
+            if (allText.length > 2000) {
+                allText = allText.substring(0, 1950) + '\n\n...(長すぎるため省略されました)';
+            }
+
+            await interaction.reply({
+                content: allText,
+                ephemeral: true,
+            });
+            return;
+        }
+
+        // 4. 個別閲覧 (view)
+        if (subcommand === 'view') {
+            const title = interaction.options.getString('title');
+            const content = userMemos[userId][title];
+
+            if (content === undefined) {
+                await interaction.reply({
+                    content: `⚠️ 「**${title}**」というタイトルのメモは見つかりませんでした。`,
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            await interaction.reply({
+                content: `📖 **【 ${title} 】**\n\`\`\`text\n${content}\n\`\`\``,
+                ephemeral: true,
+            });
+            return;
+        }
+
+        // 5. 編集 (edit)
+        if (subcommand === 'edit') {
+            const title = interaction.options.getString('title');
+            const newContent = interaction.options.getString('new_content');
+
+            if (userMemos[userId][title] === undefined) {
+                await interaction.reply({
+                    content: `⚠️ 編集対象のメモ「**${title}**」が見つかりませんでした。`,
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            userMemos[userId][title] = newContent;
+
+            await interaction.reply({
+                content: `✨ メモ「**${title}**」の内容を新しく更新しました！`,
+                ephemeral: true,
+            });
+            return;
+        }
+
+        // 6. 削除 (delete)
+        if (subcommand === 'delete') {
+            const title = interaction.options.getString('title');
+
+            if (userMemos[userId][title] === undefined) {
+                await interaction.reply({
+                    content: `⚠️ 削除対象のメモ「**${title}**」が見つかりませんでした。`,
+                    ephemeral: true,
+                });
+                return;
+            }
+
+            delete userMemos[userId][title];
+
+            await interaction.reply({
+                content: `🗑️ メモ「**${title}**」を削除しました。`,
+                ephemeral: true,
+            });
+            return;
+        }
     }
 });
 
 // ==========================================
-// 5. Botのログイン
+// 7. Botのログイン
 // ==========================================
 client.login(TOKEN);
