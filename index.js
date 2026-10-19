@@ -1,4 +1,6 @@
-﻿const {
+﻿require('dotenv').config();
+
+const {
     Client,
     GatewayIntentBits,
     Partials,
@@ -159,4 +161,5 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.login('YOUR_BOT_TOKEN');
+// 直接トークンを書かず、環境変数から読み込む
+client.login(process.env.DISCORD_TOKEN);
