@@ -58,6 +58,17 @@ const client = new Client({
 const userNotes = {};
 const userDashboards = {};
 
+// スラッシュコマンドの自動登録
+async function registerCommands() {
+    try {
+        console.log('スラッシュコマンドを登録中...');
+        await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+        console.log('スラッシュコマンドの登録が完了しました。');
+    } catch (error) {
+        console.error('コマンド登録エラー:', error);
+    }
+}
+
 function createDashboardEmbed(userId, panelName) {
     const notes = userNotes[userId]?.[panelName] || [];
 
