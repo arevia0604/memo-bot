@@ -36,8 +36,8 @@ app.listen(PORT, '0.0.0.0', () => {
 // 2. TOKENのデバッグ・環境変数確認
 // ==========================================
 console.log("=== TOKEN デバッグ開始 ===");
-console.log("型:", typeof process.env.TOKEN);
-console.log("中身が存在するか:", process.env.TOKEN ? "存在する（長さ: " + process.env.TOKEN.length + "文字）" : "❌ 存在しない（undefined または 空）");
+console.log("型:", typeof process.env.DISCORD_TOKEN);
+console.log("中身が存在するか:", process.env.DISCORD_TOKEN ? "存在する（長さ: " + process.env.TOKEN.length + "文字）" : "❌ 存在しない（undefined または 空）");
 console.log("=== TOKEN デバッグ終了 ===");
 
 const TOKEN = process.env.TOKEN || process.env.DISCORD_TOKEN;
